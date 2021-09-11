@@ -1,0 +1,62 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
+{
+    "configurations": [
+        {
+            "name": "PlatformIO",
+            "includePath": [
+                "/home/farid/Documents/PlatformIO/Projects/blink2.0/include",
+                "/home/farid/Documents/PlatformIO/Projects/blink2.0/src",
+                "/home/farid/Documents/PlatformIO/Projects/blink2.0/.pio/libdeps/uno/TimerOne",
+                "/home/farid/Documents/PlatformIO/Projects/blink2.0/.pio/libdeps/uno/arduino-timer/src",
+                "/home/farid/Documents/PlatformIO/Projects/blink2.0/.pio/libdeps/uno/rosserial_arduino",
+                "/home/farid/.platformio/packages/framework-arduino-avr/cores/arduino",
+                "/home/farid/.platformio/packages/framework-arduino-avr/variants/mega",
+                "/home/farid/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                "/home/farid/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                "/home/farid/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                "/home/farid/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                "/home/farid/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "/home/farid/Documents/PlatformIO/Projects/blink2.0/include",
+                    "/home/farid/Documents/PlatformIO/Projects/blink2.0/src",
+                    "/home/farid/Documents/PlatformIO/Projects/blink2.0/.pio/libdeps/uno/TimerOne",
+                    "/home/farid/Documents/PlatformIO/Projects/blink2.0/.pio/libdeps/uno/arduino-timer/src",
+                    "/home/farid/Documents/PlatformIO/Projects/blink2.0/.pio/libdeps/uno/rosserial_arduino",
+                    "/home/farid/.platformio/packages/framework-arduino-avr/cores/arduino",
+                    "/home/farid/.platformio/packages/framework-arduino-avr/variants/mega",
+                    "/home/farid/.platformio/packages/framework-arduino-avr/libraries/EEPROM/src",
+                    "/home/farid/.platformio/packages/framework-arduino-avr/libraries/HID/src",
+                    "/home/farid/.platformio/packages/framework-arduino-avr/libraries/SPI/src",
+                    "/home/farid/.platformio/packages/framework-arduino-avr/libraries/SoftwareSerial/src",
+                    "/home/farid/.platformio/packages/framework-arduino-avr/libraries/Wire/src",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=50101",
+                "ARDUINO_AVR_MEGA2560",
+                "F_CPU=16000000L",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO=10808",
+                "__AVR_ATmega2560__",
+                ""
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++11",
+            "compilerPath": "/home/farid/.platformio/packages/toolchain-atmelavr/bin/avr-gcc",
+            "compilerArgs": [
+                "-mmcu=atmega2560",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
