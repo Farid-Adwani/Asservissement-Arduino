@@ -52,15 +52,14 @@ void change_left_b();
 
 
 float ref_x,ref_y;
-// float dec=100;
+float dec=100;
 
 void set_right_encoder(/*TIM_HandleTypeDef* htim, TIM_TypeDef* TIM,*/ int resolution, int precision, int sens,int pinA,int pinB)
 {
 	
 	right_pinA=pinA;
 	right_pinB=pinB;
-  	attachInterrupt(digitalPinToInterrupt(right_pinA), change_right_a,CHANGE);
-  	attachInterrupt(digitalPinToInterrupt(right_pinB), change_right_b, CHANGE);
+	
 	right_resolution = resolution;
 	right_precision = precision;
 	right_sens=sens;
@@ -77,8 +76,7 @@ void set_left_encoder(/*TIM_HandleTypeDef* htim, TIM_TypeDef* TIM, */int resolut
 	// // left_TIM = TIM;
 	left_pinA=pinA;
 	left_pinB=pinB;
-	attachInterrupt(digitalPinToInterrupt(left_pinA), change_left_a,CHANGE);
-  	attachInterrupt(digitalPinToInterrupt(left_pinB), change_left_b, CHANGE);
+	
 	left_resolution = resolution;
 	left_precision = precision;
 	left_sens=sens;
@@ -98,6 +96,7 @@ void read_right_encoder()
 	if (d_right<-30000)
 		d_right = d_right + 65535;
 	total_right_count = total_right_count + d_right;
+	Serial.println(total_right_count);
 }
 
 void read_left_encoder()
@@ -110,6 +109,8 @@ void read_left_encoder()
 	if (d_left<-30000)
 		d_left = d_left + 65535;
 	total_left_count = total_left_count + d_left;
+	Serial.println(total_right_count);
+
 }
 
 void set_dimentions(float right_wheel_radius, float left_wheel_radius, float encoder_spacing, float wheels_spacing)
@@ -126,6 +127,7 @@ void update_position()
 	read_left_encoder();
 	dR = ticks_to_distance(d_right,right_radius,right_resolution,right_precision);
 	total_right += dR;
+	Serial.println(total_right);
 	d_right_counter += dR;
 	dL = ticks_to_distance(d_left,left_radius,left_resolution,left_precision);
 	total_left += dL;
@@ -149,8 +151,8 @@ void update_position()
 	//Robot navi 2020
 	milliss++;
 	t++;
-	ref_x = current_x + cos(current_phi_rad) /**dec*/;
-	ref_y = current_y + sin(current_phi_rad) /**dec*/;
+	ref_x = current_x/* + cos(current_phi_rad) *dec*/;
+	ref_y = current_y /*+ sin(current_phi_rad) *dec*/;
 }
 
 void speed_calcul()
@@ -191,6 +193,10 @@ float rad_to_deg(double x)
 
 void change_left_a(){  
 
+Serial.print(right_delta_ticks);
+	Serial.print("  ");
+
+	Serial.println(left_delta_ticks);
   // look for a low-to-high on channel A
   if (digitalRead(left_pinA) == HIGH) { 
     // check channel B to see which way encoder is turning
@@ -215,7 +221,10 @@ void change_left_a(){
 }
 
 void change_left_b(){  
-	
+	Serial.print(right_delta_ticks);
+	Serial.print("  ");
+
+	Serial.println(left_delta_ticks);
 
   // look for a low-to-high on channel B
   if (digitalRead(left_pinB) == HIGH) {   
@@ -244,6 +253,10 @@ void change_left_b(){
 // ************** encoder 2 *********************
 
 void change_right_a(){  
+	Serial.print(right_delta_ticks);
+	Serial.print("  ");
+
+	Serial.println(left_delta_ticks);
 
   // look for a low-to-high on channel A
   if (digitalRead(right_pinA) == HIGH) { 
@@ -269,6 +282,10 @@ void change_right_a(){
 }
 
 void change_right_b(){  
+	Serial.print(right_delta_ticks);
+	Serial.print("  ");
+
+	Serial.println(left_delta_ticks);
 
   // look for a low-to-high on channel B
   if (digitalRead(right_pinB) == HIGH) {   

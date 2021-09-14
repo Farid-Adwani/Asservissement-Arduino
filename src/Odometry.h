@@ -1,6 +1,6 @@
 
 #include <math.h>
-#define PI (float) 3.14159265358979323846
+// #define PI (float) 3.14159265358979323846
 #define T 10
 
 void set_right_encoder(/*TIM_HandleTypeDef* htim, TIM_TypeDef* TIM, */int resolution, int precision, int sens,int pinA,int pinB);

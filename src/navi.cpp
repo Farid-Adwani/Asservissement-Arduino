@@ -4,6 +4,16 @@
 #include<TimerOne.h>
 
 
+
+#define encoder1PinA 20      // encoder R
+#define encoder1PinB 21
+
+#define encoder0PinA 18   // encoder L
+#define encoder0PinB 19
+volatile long encoder0Pos = 0;    // encoder 1
+volatile long encoder1Pos = 0;  
+
+
 extern long volatile  milliss,t;
 unsigned long long int delta,t0;
 
@@ -21,7 +31,7 @@ extern int PWM_R_sign_counter,PWM_L_sign_counter;
 extern volatile float total_right,total_left, total_centre;
 extern volatile float current_x,current_y,current_phi_deg,current_phi_rad;
 extern float ref_x, ref_y;
-extern  float spacing_encoder,spacing_wheel/*,dec*/;
+extern  float spacing_encoder,spacing_wheel,dec;
 extern volatile double right_speed, left_speed;
 
 //Robot Navi Related Variables
@@ -36,7 +46,7 @@ float speed_ref, ramp = 500,rampR=100,rampC=500;//max 1500
 int sens;
 double right_error=0,i_right_error=0;
 double left_error=0,i_left_error=0;
-float kp = 15, ki = 0.8;
+float kp = 15, ki = 0.9;
 
 //Move
 int coef_correct_dist = 20;
@@ -548,34 +558,159 @@ void trajectory (void)
 
 void Time_interrupt(){
     update_position();
-    // PWM_sign_change_counter();
+    PWM_sign_change_counter();
    
 }
 
-void setup(){
-Serial.begin(9600);
-// Timer1.initialize(1000);
-// Timer1.attachIn40);
-set_dimentions(45,45,355,185);
-set_motors(255,7,8,9,10);
-set_right_encoder(1024,4,1,18,19);
-set_left_encoder(1024,4,1,20,21);
-set_PWM_min(80,80,80,80);
-}
+
 
 
 void loop(){
- 	 update_position();
+ 	//  update_position();
     // PWM_sign_change_counter();
+	// update_position();
+    // PWM_sign_change_counter();
+
     Serial.print("x= ");
-    Serial.print(ref_x);
+    Serial.print(encoder0Pos);
     Serial.print(" ");
     Serial.print("y= ");
-    Serial.print(ref_y);
-    Serial.print(" ");
-    Serial.print("teta= ");
-    Serial.println(current_phi_deg);
-    delay(1);
+    Serial.println(encoder1Pos);
+    // Serial.print(" ");
+    // Serial.print("teta= ");
+    // Serial.println(current_phi_deg);
+    // orientate(180,30);
+	delay(10);
+	// run_forward(60,60);
+	
 
 
+}
+
+
+
+
+void doEncoderA() {
+
+  // look for a low-to-high on channel A
+  if (digitalRead(encoder0PinA) == HIGH) {
+    // check channel B to see which way encoder is turning
+    if (digitalRead(encoder0PinB) == LOW) {
+      encoder0Pos = encoder0Pos + 1;         // CW
+    }
+    else {
+      encoder0Pos = encoder0Pos - 1;         // CCW
+    }
+  }
+  else   // must be a high-to-low edge on channel A
+  {
+    // check channel B to see which way encoder is turning
+    if (digitalRead(encoder0PinB) == HIGH) {
+      encoder0Pos = encoder0Pos + 1;          // CW
+    }
+    else {
+      encoder0Pos = encoder0Pos - 1;          // CCW
+    }
+  }
+
+}
+
+void doEncoderB() {
+
+  // look for a low-to-high on channel B
+  if (digitalRead(encoder0PinB) == HIGH) {
+    // check channel A to see which way encoder is turning
+    if (digitalRead(encoder0PinA) == HIGH) {
+      encoder0Pos = encoder0Pos + 1;         // CW
+    }
+    else {
+      encoder0Pos = encoder0Pos - 1;         // CCW
+    }
+  }
+  // Look for a high-to-low on channel B
+  else {
+    // check channel B to see which way encoder is turning
+    if (digitalRead(encoder0PinA) == LOW) {
+      encoder0Pos = encoder0Pos + 1;          // CW
+    }
+    else {
+      encoder0Pos = encoder0Pos - 1;          // CCW
+    }
+  }
+
+
+}
+
+// ************** encoder 2 *********************
+
+void doEncoderC() {
+
+  // look for a low-to-high on channel A
+  if (digitalRead(encoder1PinA) == HIGH) {
+    // check channel B to see which way encoder is turning
+    if (digitalRead(encoder1PinB) == LOW) {
+      encoder1Pos = encoder1Pos - 1;         // CW
+    }
+    else {
+      encoder1Pos = encoder1Pos + 1;         // CCW
+    }
+  }
+  else   // must be a high-to-low edge on channel A
+  {
+    // check channel B to see which way encoder is turning
+    if (digitalRead(encoder1PinB) == HIGH) {
+      encoder1Pos = encoder1Pos - 1;          // CW
+    }
+    else {
+      encoder1Pos = encoder1Pos + 1;          // CCW
+    }
+  }
+
+}
+
+void doEncoderD() {
+
+  // look for a low-to-high on channel B
+  if (digitalRead(encoder1PinB) == HIGH) {
+    // check channel A to see which way encoder is turning
+    if (digitalRead(encoder1PinA) == HIGH) {
+      encoder1Pos = encoder1Pos - 1;         // CW
+    }
+    else {
+      encoder1Pos = encoder1Pos + 1;         // CCW
+    }
+  }
+  // Look for a high-to-low on channel B
+  else {
+    // check channel B to see which way encoder is turning
+    if (digitalRead(encoder1PinA) == LOW) {
+      encoder1Pos = encoder1Pos - 1;          // CW
+    }
+    else {
+      encoder1Pos = encoder1Pos + 1;          // CCW
+    }
+  }
+
+
+}
+
+
+void setup(){
+Serial.begin(9600);
+  pinMode(encoder1PinA,INPUT_PULLUP);
+  pinMode(encoder1PinB,INPUT_PULLUP);
+  pinMode(encoder0PinA,INPUT_PULLUP);
+  pinMode(encoder0PinB,INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(encoder0PinA), doEncoderA, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder0PinB), doEncoderB, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(encoder1PinA), doEncoderC, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder1PinB), doEncoderD, CHANGE);
+// Timer1.initialize(10000);
+// Timer1.attachInterrupt(Time_interrupt);
+// set_dimentions(39.594,39.34,289.3,195);
+set_dimentions(40,40,240,1);
+set_motors(50,6,5,7,8);
+set_right_encoder(400,4,1,20,21);
+ set_left_encoder(400,4,1,18,19);
+set_PWM_min(80,80,80,80);
 }
