@@ -1,38 +1,40 @@
-#include "navi.h"
+// #include "navi.h"
 #include <stdlib.h>
 #include<Arduino.h>
 #include<TimerOne.h>
+// #include<Motors.h>
+// #include<Odometry.h>
+// #define PI (float) 3.14159265358979323846
+#define T 10
 
+int encoder1PinA=20;      // encoder R
+int encoder1PinB =21;
 
+int encoder0PinA =18 ;  // encoder L
+int encoder0PinB =19;
 
-#define encoder1PinA 20      // encoder R
-#define encoder1PinB 21
+volatile long right_delta_ticks = 0;    // encoder 1
+volatile long left_delta_ticks = 0;    // encoder 2
 
-#define encoder0PinA 18   // encoder L
-#define encoder0PinB 19
-volatile long encoder0Pos = 0;    // encoder 1
-volatile long encoder1Pos = 0;  
-
-
-extern long volatile  milliss,t;
+// extern long volatile  milliss,t;
 unsigned long long int delta,t0;
 
 unsigned int prevMillis=0;
 unsigned int currentMillis=0;
 
 //Motors realted variables
-extern int PWM_R,PWM_L;
-extern int PWM_Max;
-extern int PWM_R_Min,PWM_L_Min;
-extern int PWM_R_Min_Rot,PWM_L_Min_Rot;
-extern int PWM_R_sign_counter,PWM_L_sign_counter;
+// extern int PWM_R,PWM_L;
+// extern int PWM_Max;
+// extern int PWM_R_Min,PWM_L_Min;
+// extern int PWM_R_Min_Rot,PWM_L_Min_Rot;
+// extern int PWM_R_sign_counter,PWM_L_sign_counter;
 
 //Odometry related variables
-extern volatile float total_right,total_left, total_centre;
-extern volatile float current_x,current_y,current_phi_deg,current_phi_rad;
-extern float ref_x, ref_y;
-extern  float spacing_encoder,spacing_wheel,dec;
-extern volatile double right_speed, left_speed;
+// extern volatile float total_right,total_left, total_centre;
+// extern volatile float current_x,current_y,current_phi_deg,current_phi_rad;
+// extern float ref_x, ref_y;
+// extern  float spacing_encoder,spacing_wheel,dec;
+// extern volatile double right_speed, left_speed;
 
 //Robot Navi Related Variables
 float goal_distance, target_angle;
@@ -69,12 +71,307 @@ int flag2=0;
 
 
 
-float constrainn( float x,float min,float Max)
+//motors.c 
+
+unsigned int right_forward, right_backward, left_forward, left_backward;
+int PWM_R,PWM_L;
+int PWM_Max;
+int PWM_R_Min,PWM_L_Min;
+int PWM_R_Min_Rot,PWM_L_Min_Rot;
+int PWM_R_sign,PWM_L_sign;
+int PWM_R_last_sign,PWM_L_last_sign;
+int PWM_R_sign_counter,PWM_L_sign_counter;
+
+
+
+void stop_motors()
 {
-	if (x<min) return min;
-	if (x>Max) return Max;
-	else return(x);
+    analogWrite(right_forward,0);
+    analogWrite(right_backward,0);
+    analogWrite(left_forward,0);
+    analogWrite(left_backward,0);
+  
 }
+
+void set_motors (/*TIM_HandleTypeDef* htim, */int MAX_PWM, unsigned int forward_right, unsigned int backward_right, unsigned int forward_left, unsigned int backward_left)
+{
+	// htim_Motors = htim;
+	PWM_Max = MAX_PWM;
+	right_forward = forward_right;
+	right_backward = backward_right;
+	left_forward = forward_left;
+	left_backward = backward_left;
+  	// HAL_TIM_PWM_Start(htim_Motors, TIM_CHANNEL_1);  
+	// HAL_TIM_PWM_Start(htim_Motors, TIM_CHANNEL_2);  
+	// HAL_TIM_PWM_Start(htim_Motors, TIM_CHANNEL_3);  
+	// HAL_TIM_PWM_Start(htim_Motors, TIM_CHANNEL_4);
+	stop_motors();
+}
+
+void run_motors()
+{
+	if (PWM_R>0)
+	{
+		if (PWM_R>PWM_Max) PWM_R=PWM_Max;
+        analogWrite(right_forward,PWM_R);
+        analogWrite(right_backward,0);
+
+		// __HAL_TIM_SetCompare(htim_Motors, right_forward, PWM_R); 
+		// __HAL_TIM_SetCompare(htim_Motors, right_backward, 0);
+	}
+	else
+	{
+		if (PWM_R<-PWM_Max) PWM_R=-PWM_Max;
+        analogWrite(right_forward,0);
+        analogWrite(right_backward,-PWM_R);
+		// __HAL_TIM_SetCompare(htim_Motors, right_forward, 0); 
+		// __HAL_TIM_SetCompare(htim_Motors, right_backward, -PWM_R);
+	}
+	if (PWM_L>0)
+	{
+		if (PWM_L>PWM_Max) PWM_L=PWM_Max;
+        analogWrite(left_forward,PWM_L);
+        analogWrite(left_backward,0);
+		// __HAL_TIM_SetCompare(htim_Motors, left_forward, PWM_L); 
+		// __HAL_TIM_SetCompare(htim_Motors, left_backward, 0);
+	}
+	else
+	{
+		if (PWM_L<-PWM_Max) PWM_L=-PWM_Max;
+        analogWrite(left_forward,0);
+        analogWrite(left_backward,-PWM_L);
+		// __HAL_TIM_SetCompare(htim_Motors, left_forward, 0); 
+		// __HAL_TIM_SetCompare(htim_Motors, left_backward, -PWM_L);
+	}
+}
+
+void run_forward (int right_PWM, int left_PWM)
+{
+
+    analogWrite(right_forward,right_PWM);
+    analogWrite(right_backward,0);
+    analogWrite(left_forward,left_PWM);
+    analogWrite(left_backward,0);
+	// __HAL_TIM_SetCompare(htim_Motors, right_forward, right_PWM); 
+	// __HAL_TIM_SetCompare(htim_Motors, right_backward, 0);
+	// __HAL_TIM_SetCompare(htim_Motors, left_forward, left_PWM); 
+	// __HAL_TIM_SetCompare(htim_Motors, left_backward, 0);
+}
+
+void set_PWM_min (int PWM_Min_R, int PWM_Min_L, int PWM_Min_R_Rot, int PWM_Min_L_Rot)
+{
+	PWM_R_Min=PWM_Min_R;
+	PWM_L_Min=PWM_Min_L;
+	PWM_R_Min_Rot=PWM_Min_R_Rot;
+	PWM_L_Min_Rot=PWM_Min_L_Rot;
+}
+
+void PWM_sign_change_counter()
+{
+	PWM_L_last_sign = PWM_L_sign;
+	PWM_R_last_sign = PWM_R_sign;
+	if (PWM_R >= 0) PWM_R_sign = 1;
+		else PWM_R_sign = -1;
+        //
+        //
+        //kanet PWM_R >= 0
+	if (PWM_L >= 0) PWM_L_sign = 1;
+		else PWM_L_sign = -1;
+
+       
+	if (PWM_L_sign != PWM_L_last_sign) PWM_L_sign_counter++;
+	if (PWM_R_sign != PWM_R_last_sign) PWM_R_sign_counter++;
+} 
+
+//motors.c end
+
+// odometry .c
+
+long volatile milliss=0,t=0;
+
+// TIM_HandleTypeDef* htim_right_encoder;
+// TIM_TypeDef* right_TIM;
+unsigned int right_ticks;
+int right_resolution;
+int right_precision;
+int right_sens;
+volatile long long current_right_count=0;
+volatile  long long last_right_count=0;
+volatile long d_right;
+volatile long total_right_count;
+volatile float total_right=0,d_right_counter=0;
+volatile double right_speed,right_encoder_speed;
+
+// TIM_HandleTypeDef* htim_left_Encoder;
+// TIM_TypeDef* left_TIM;
+int left_resolution;
+int left_precision;
+int left_sens;
+int right_pinA;
+int right_pinB;
+int left_pinA;
+int left_pinB;
+
+// extern volatile  int right_delta_ticks;
+// extern volatile  int left_delta_ticks;
+volatile long long current_left_count;
+volatile long long last_left_count;
+volatile long d_left;
+volatile long total_left_count;
+volatile float total_left=0,d_left_counter=0,total_centre=0;
+volatile double left_speed,left_encoder_speed;
+
+volatile float dR,dL,dC;
+volatile float left_radius,right_radius,spacing_encoder,spacing_wheel;
+volatile float current_x=0;
+volatile float current_y=0;
+volatile double current_phi_rad=0;
+volatile double phi_speed,d_phi_counter;
+volatile float current_phi_deg;
+
+
+
+float ref_x,ref_y;
+float dec=100;
+
+float rad_to_deg(double x)
+{
+	return (x*360/(2*PI));
+}
+
+
+void set_right_encoder(/*TIM_HandleTypeDef* htim, TIM_TypeDef* TIM,*/ int resolution, int precision, int sens,int pinA,int pinB)
+{
+	
+	encoder1PinA=pinA;
+	encoder1PinB=pinB;
+	
+	right_resolution = resolution;
+	right_precision = precision;
+	right_sens=sens;
+	// HAL_TIM_Encoder_Start(htim_right_encoder,TIM_CHANNEL_1);
+	right_delta_ticks = 0;
+	total_right_count = 0; 
+	
+	
+}
+
+void set_left_encoder(/*TIM_HandleTypeDef* htim, TIM_TypeDef* TIM, */int resolution, int precision, int sens,int pinA,int pinB)
+{
+	// htim_left_Encoder = htim;
+	// // left_TIM = TIM;
+	encoder0PinA=pinA;
+	encoder0PinB=pinB;
+	// pinMode(left_pinB,INPUT_PULLUP);
+	// pinMode(left_pinA,INPUT_PULLUP);
+
+	// attachInterrupt(digitalPinToInterrupt(left_pinA), change_left_a,CHANGE);
+  	// attachInterrupt(digitalPinToInterrupt(left_pinB), change_left_b, CHANGE);
+	left_resolution = resolution;
+	left_precision = precision;
+	left_sens=sens;
+	// HAL_TIM_Encoder_Start(htim_left_Encoder,TIM_CHANNEL_1);
+	left_delta_ticks = 0;
+	total_left_count = 0;
+}
+
+void read_right_encoder()
+{
+	
+	
+	last_right_count = current_right_count;
+	current_right_count = right_sens*right_delta_ticks;
+	d_right = current_right_count - last_right_count;
+	// if (d_right>30000)
+	// 	d_right = d_right - 65535;
+	// if (d_right<-30000)
+	// 	d_right = d_right + 65535;
+	total_right_count = total_right_count + d_right;
+}
+
+void read_left_encoder()
+{
+	last_left_count = current_left_count;
+	current_left_count = left_sens*left_delta_ticks;
+	d_left = current_left_count - last_left_count;
+	if (d_left>30000)
+		d_left = d_left - 65535;
+	if (d_left<-30000)
+		d_left = d_left + 65535;
+	total_left_count = total_left_count + d_left;
+}
+
+void set_dimentions(float right_wheel_radius, float left_wheel_radius, float encoder_spacing, float wheels_spacing)
+{
+	right_radius = right_wheel_radius;
+	left_radius = left_wheel_radius;
+	spacing_encoder = encoder_spacing;
+	spacing_wheel = wheels_spacing;
+}
+
+float ticks_to_distance(int x, float r, int resolution, int precision) 
+{
+	return (x*2*PI*r/(resolution*precision));
+}
+
+void update_position()
+{
+	read_right_encoder();
+	read_left_encoder();
+	dR = ticks_to_distance(d_right,right_radius,right_resolution,right_precision);
+	total_right += dR;
+	d_right_counter += dR;
+	dL = ticks_to_distance(d_left,left_radius,left_resolution,left_precision);
+	total_left += dL;
+	d_left_counter += dL;
+	dC = (dR+dL)/2;
+	total_centre+=dC;
+	
+	current_x += dC*cos(current_phi_rad);
+	current_y += dC*sin(current_phi_rad);
+	current_phi_rad += ((dR-dL)/spacing_encoder);
+	d_phi_counter += ((dR-dL)/spacing_encoder);
+	while (current_phi_rad>PI)
+	{
+		current_phi_rad -= 2*PI;
+	}
+	while (current_phi_rad<-PI)
+	{
+		current_phi_rad += 2*PI;
+	}
+	current_phi_deg = rad_to_deg(current_phi_rad);
+	//Robot navi 2020
+	milliss++;
+	t++;
+	ref_x = current_x/* + cos(current_phi_rad) *dec*/;
+	ref_y = current_y /*+ sin(current_phi_rad) *dec*/;
+}
+
+void speed_calcul()
+{
+	right_encoder_speed = d_right_counter/T*1000;
+	d_right_counter = 0;
+	left_encoder_speed = d_left_counter/T*1000;
+	d_left_counter = 0;
+	phi_speed = d_phi_counter/T*1000;
+	d_phi_counter = 0;
+	right_speed = (right_encoder_speed + left_encoder_speed)/2 + phi_speed * spacing_wheel/2;
+	left_speed = (right_encoder_speed + left_encoder_speed)/2 - phi_speed * spacing_wheel/2;
+}
+
+void reset_position()
+{
+	current_x = 0;
+	current_y = 0;
+	current_phi_deg = 0;
+	current_phi_rad = 0;
+}
+
+
+
+
+
+// odometry .c end
 
 void initt (void)
 {
@@ -88,6 +385,75 @@ void initt (void)
 	right_error=0;
 	left_error=0;
 }
+
+float constrainn( float x,float min,float Max)
+{
+	if (x<min) return min;
+	if (x>Max) return Max;
+	else return(x);
+}
+void rotate(float angle, float speed)
+{
+	initt();
+	//Set accel/decel distance
+	goal_distance = angle * PI * spacing_encoder/ 180;
+	if (fabs(goal_distance) < (2*speed*speed/rampR))
+	{
+		accel_dist = fabs(goal_distance)/2;
+		decel_dist = fabs(goal_distance)/2;
+		speed = sqrt(rampR*accel_dist);
+	}
+	else
+	{
+		accel_dist = (float)speed*speed/rampR;
+		decel_dist = (float)speed*speed/rampR;
+	}
+	while( fabs(total_right-total_left)<fabs(goal_distance))
+	{
+		t0=t;
+		//Accel/Decel Speed Set
+		if (((total_right-total_left)-goal_distance)<0)
+			sens = 1;
+		else
+			sens = -1;
+		if (fabs((total_right-total_left)) < accel_dist)
+			speed_ref = sens*constrainn(sqrt(rampR*fabs(total_right-total_left)),50,1000);
+		else if (fabs((total_right-total_left)-goal_distance) < decel_dist)
+			speed_ref = sens*constrainn(sqrt(rampR*fabs((total_right-total_left)-goal_distance)),10,1000);
+		else
+			speed_ref = sens*speed;
+		//Right wheel regulation
+		right_error = speed_ref - right_speed;
+		i_right_error += right_error;
+		PWM_RB = kp * right_error + ki * i_right_error;
+		//Left wheel regulation
+		left_error = - speed_ref - left_speed;
+		i_left_error += left_error;
+		PWM_LB = kp * left_error + ki * i_left_error;
+		//Position Correction;
+		left_correction = coef_correct_angle * (total_right + total_left);
+		right_correction = - left_correction;
+		PWM_R = PWM_RB + right_correction;
+		PWM_L = PWM_LB - left_correction;
+		//Execution
+		run_motors();
+		do delta=t-t0;
+		while (delta<T);
+	}
+	stop_motors();
+}
+
+void orientate (float orientation, float speed)
+{
+	target_angle = orientation - current_phi_deg;
+	if (target_angle>180) target_angle -= 360;
+	if (target_angle<-180) target_angle += 360;
+	rotate(target_angle,speed);
+}
+
+
+
+
 // intiailisation de la fonction multi_curv (pour accumuler l'Integrale)
 void initMultiCurv (void)
 {
@@ -243,13 +609,7 @@ void Calcul_speed_Refs(float theta,float R,int sens_de_mouvement, float speed){
 			}
 		}
 }
-// robot locate curv
-void Robot_locateCurv(float x, float y, float phi_target, float speed) {
-	Calcul_Curv(x,y,phi_target);
-  orientate(phi_prim,speed);
-	curv(Rayon,tetaC,speed);
-}
-//curv
+
 void curv(float R,float theta ,float speed)
 { initt();	 
 	theta=(theta*PI)/180;
@@ -291,6 +651,16 @@ void curv(float R,float theta ,float speed)
 	  }
   	stop_motors();
 }
+
+
+// robot locate curv
+void Robot_locateCurv(float x, float y, float phi_target, float speed) {
+	Calcul_Curv(x,y,phi_target);
+  orientate(phi_prim,speed);
+	curv(Rayon,tetaC,speed);
+}
+//curv
+
 //curv function used in the robot_locate_multi_curv function
  void Multi_Curv(float R,float theta ,float speed,int i,int n){ 
 	initMultiCurv(); // integrale accumulée
@@ -390,64 +760,9 @@ void curv(float R,float theta ,float speed)
 	 stop_motors();
 }
 		
-void rotate(float angle, float speed)
-{
-	initt();
-	//Set accel/decel distance
-	goal_distance = angle * PI * spacing_encoder/ 180;
-	if (fabs(goal_distance) < (2*speed*speed/rampR))
-	{
-		accel_dist = fabs(goal_distance)/2;
-		decel_dist = fabs(goal_distance)/2;
-		speed = sqrt(rampR*accel_dist);
-	}
-	else
-	{
-		accel_dist = (float)speed*speed/rampR;
-		decel_dist = (float)speed*speed/rampR;
-	}
-	while( fabs(total_right-total_left)<fabs(goal_distance))
-	{
-		t0=t;
-		//Accel/Decel Speed Set
-		if (((total_right-total_left)-goal_distance)<0)
-			sens = 1;
-		else
-			sens = -1;
-		if (fabs((total_right-total_left)) < accel_dist)
-			speed_ref = sens*constrainn(sqrt(rampR*fabs(total_right-total_left)),50,1000);
-		else if (fabs((total_right-total_left)-goal_distance) < decel_dist)
-			speed_ref = sens*constrainn(sqrt(rampR*fabs((total_right-total_left)-goal_distance)),10,1000);
-		else
-			speed_ref = sens*speed;
-		//Right wheel regulation
-		right_error = speed_ref - right_speed;
-		i_right_error += right_error;
-		PWM_RB = kp * right_error + ki * i_right_error;
-		//Left wheel regulation
-		left_error = - speed_ref - left_speed;
-		i_left_error += left_error;
-		PWM_LB = kp * left_error + ki * i_left_error;
-		//Position Correction;
-		left_correction = coef_correct_angle * (total_right + total_left);
-		right_correction = - left_correction;
-		PWM_R = PWM_RB + right_correction;
-		PWM_L = PWM_LB - left_correction;
-		//Execution
-		run_motors();
-		do delta=t-t0;
-		while (delta<T);
-	}
-	stop_motors();
-}
 
-void orientate (float orientation, float speed)
-{
-	target_angle = orientation - current_phi_deg;
-	if (target_angle>180) target_angle -= 360;
-	if (target_angle<-180) target_angle += 360;
-	rotate(target_angle,speed);
-}
+
+
 
 void Robot_Locate(float goal_x, float goal_y, float speed)
 {
@@ -565,29 +880,6 @@ void Time_interrupt(){
 
 
 
-void loop(){
- 	//  update_position();
-    // PWM_sign_change_counter();
-	// update_position();
-    // PWM_sign_change_counter();
-
-    Serial.print("x= ");
-    Serial.print(encoder0Pos);
-    Serial.print(" ");
-    Serial.print("y= ");
-    Serial.println(encoder1Pos);
-    // Serial.print(" ");
-    // Serial.print("teta= ");
-    // Serial.println(current_phi_deg);
-    // orientate(180,30);
-	delay(10);
-	// run_forward(60,60);
-	
-
-
-}
-
-
 
 
 void doEncoderA() {
@@ -596,20 +888,20 @@ void doEncoderA() {
   if (digitalRead(encoder0PinA) == HIGH) {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder0PinB) == LOW) {
-      encoder0Pos = encoder0Pos + 1;         // CW
+      right_delta_ticks = right_delta_ticks + 1;         // CW
     }
     else {
-      encoder0Pos = encoder0Pos - 1;         // CCW
+      right_delta_ticks = right_delta_ticks - 1;         // CCW
     }
   }
   else   // must be a high-to-low edge on channel A
   {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder0PinB) == HIGH) {
-      encoder0Pos = encoder0Pos + 1;          // CW
+      right_delta_ticks = right_delta_ticks + 1;          // CW
     }
     else {
-      encoder0Pos = encoder0Pos - 1;          // CCW
+      right_delta_ticks = right_delta_ticks - 1;          // CCW
     }
   }
 
@@ -621,20 +913,20 @@ void doEncoderB() {
   if (digitalRead(encoder0PinB) == HIGH) {
     // check channel A to see which way encoder is turning
     if (digitalRead(encoder0PinA) == HIGH) {
-      encoder0Pos = encoder0Pos + 1;         // CW
+      right_delta_ticks = right_delta_ticks + 1;         // CW
     }
     else {
-      encoder0Pos = encoder0Pos - 1;         // CCW
+      right_delta_ticks = right_delta_ticks - 1;         // CCW
     }
   }
   // Look for a high-to-low on channel B
   else {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder0PinA) == LOW) {
-      encoder0Pos = encoder0Pos + 1;          // CW
+      right_delta_ticks = right_delta_ticks + 1;          // CW
     }
     else {
-      encoder0Pos = encoder0Pos - 1;          // CCW
+      right_delta_ticks = right_delta_ticks - 1;          // CCW
     }
   }
 
@@ -649,20 +941,20 @@ void doEncoderC() {
   if (digitalRead(encoder1PinA) == HIGH) {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder1PinB) == LOW) {
-      encoder1Pos = encoder1Pos - 1;         // CW
+      left_delta_ticks = left_delta_ticks - 1;         // CW
     }
     else {
-      encoder1Pos = encoder1Pos + 1;         // CCW
+      left_delta_ticks = left_delta_ticks + 1;         // CCW
     }
   }
   else   // must be a high-to-low edge on channel A
   {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder1PinB) == HIGH) {
-      encoder1Pos = encoder1Pos - 1;          // CW
+      left_delta_ticks = left_delta_ticks - 1;          // CW
     }
     else {
-      encoder1Pos = encoder1Pos + 1;          // CCW
+      left_delta_ticks = left_delta_ticks + 1;          // CCW
     }
   }
 
@@ -674,20 +966,20 @@ void doEncoderD() {
   if (digitalRead(encoder1PinB) == HIGH) {
     // check channel A to see which way encoder is turning
     if (digitalRead(encoder1PinA) == HIGH) {
-      encoder1Pos = encoder1Pos - 1;         // CW
+      left_delta_ticks = left_delta_ticks - 1;         // CW
     }
     else {
-      encoder1Pos = encoder1Pos + 1;         // CCW
+      left_delta_ticks = left_delta_ticks + 1;         // CCW
     }
   }
   // Look for a high-to-low on channel B
   else {
     // check channel B to see which way encoder is turning
     if (digitalRead(encoder1PinA) == LOW) {
-      encoder1Pos = encoder1Pos - 1;          // CW
+      left_delta_ticks = left_delta_ticks - 1;          // CW
     }
     else {
-      encoder1Pos = encoder1Pos + 1;          // CCW
+      left_delta_ticks = left_delta_ticks + 1;          // CCW
     }
   }
 
@@ -695,22 +987,68 @@ void doEncoderD() {
 }
 
 
+
+
+
 void setup(){
+ 
 Serial.begin(9600);
-  pinMode(encoder1PinA,INPUT_PULLUP);
-  pinMode(encoder1PinB,INPUT_PULLUP);
-  pinMode(encoder0PinA,INPUT_PULLUP);
-  pinMode(encoder0PinB,INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(encoder0PinA), doEncoderA, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(encoder0PinB), doEncoderB, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(encoder1PinA), doEncoderC, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(encoder1PinB), doEncoderD, CHANGE);
-// Timer1.initialize(10000);
+// Timer1.initialize(1000);
 // Timer1.attachInterrupt(Time_interrupt);
 // set_dimentions(39.594,39.34,289.3,195);
 set_dimentions(40,40,240,1);
 set_motors(50,6,5,7,8);
 set_right_encoder(400,4,1,20,21);
- set_left_encoder(400,4,1,18,19);
+set_left_encoder(400,4,1,18,19);
 set_PWM_min(80,80,80,80);
+
+
+ pinMode(encoder1PinA,INPUT_PULLUP);
+  pinMode(encoder1PinB,INPUT_PULLUP);
+  pinMode(encoder0PinA,INPUT_PULLUP);
+  pinMode(encoder0PinB,INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(encoder0PinA), doEncoderA, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder0PinB), doEncoderB, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder1PinA), doEncoderC, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoder1PinB), doEncoderD, CHANGE);
+}
+
+long currentMilli=0;
+long previousMilli=0;
+
+void loop(){
+	update_position();
+	Serial.print(right_delta_ticks);
+	Serial.println(left_delta_ticks);
+
+	delay(1);
+ 	//  update_position();
+    // PWM_sign_change_counter();
+	// update_position();
+    // PWM_sign_change_counter();
+
+    // Serial.print("x= ");
+    // Serial.print(ref_x);
+    // Serial.print(" ");
+    // Serial.print("y= ");
+    // Serial.println(ref_y);
+    // Serial.print(" ");
+    // Serial.print("teta= ");
+    // Serial.println(current_phi_deg);
+    // orientate(180,30);
+	// delay(10000);
+	// run_forward(60,60);
+	
+// 	currentMilli = millis();   // bookmark the time
+//   update_position();
+//   if (currentMilli - previousMilli >= 10) {  // start timed loop for everything else 
+//     previousMilli = currentMilli;
+//     Serial.print(right_delta_ticks);
+//     Serial.print(" , ");
+//     Serial.print(ref_y);
+// 	Serial.print(" , ");
+//     Serial.println(current_phi_deg);
+// }
+// orientate(90,50);
+// run_forward(50,50);
 }
